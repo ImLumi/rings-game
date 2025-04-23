@@ -15,18 +15,18 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid()) @db.Uuid
-  name          String    @default("Player") @db.Char(255)
-  role          Role      @default(player)
-  accessToken   String    @db.Text
-  ready         Boolean   @default(false)
-  score         Int       @default(0)
-  playerOneGame GameRoom? @relation("player1_games")
-  playerTwoGame GameRoom? @relation("player2_games")
-  currentPlayer GameRoom? @relation("current_player_games")
+  id            String       @id @default(uuid()) @db.Uuid
+  name          String       @default("Player") @db.Char(255)
+  role          Role         @default(player)
+  accessToken   String       @db.Text
+  ready         Boolean      @default(false)
+  score         Int          @default(0)
+  playerOneGame GameSession? @relation("player1_games")
+  playerTwoGame GameSession? @relation("player2_games")
+  currentPlayer GameSession? @relation("current_player_games")
 }
 
-model GameRoom {
+model GameSession {
   id              Int      @id @default(autoincrement())
   inviteCode      Int
   status          Status   @default(prepare)
@@ -42,14 +42,14 @@ model GameRoom {
 }
 
 model Puzzle {
-  id              Int        @id @default(autoincrement())
-  imageUrl        String     @db.Text
-  taskText        String     @db.Text
-  size            Int        @default(600)
+  id              Int           @id @default(autoincrement())
+  imageUrl        String        @db.Text
+  taskText        String        @db.Text
+  size            Int           @default(600)
   targetPositionX Float
   targetPositionY Float
   targetRadius    Float
-  gameRooms       GameRoom[]
+  gameSessions    GameSession[]
 }
 
 enum Role {
