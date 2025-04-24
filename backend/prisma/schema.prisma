@@ -16,14 +16,18 @@ datasource db {
 
 model User {
   id            String       @id @default(uuid()) @db.Uuid
-  name          String       @default("Player") @db.Char(255)
+  name          String       @default("Player") @db.Text
   role          Role         @default(player)
-  accessToken   String       @db.Text
+  accessToken   String?      @db.Text
+  email         String?      @unique @db.Text
+  password      String?      @db.Text
   ready         Boolean      @default(false)
   score         Int          @default(0)
   playerOneGame GameSession? @relation("player1_games")
   playerTwoGame GameSession? @relation("player2_games")
   currentPlayer GameSession? @relation("current_player_games")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model GameSession {
@@ -39,6 +43,8 @@ model GameSession {
   currentPlayerId String?  @unique @db.Uuid
   maxRound        Int      @default(5)
   puzzles         Puzzle[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Puzzle {
@@ -50,6 +56,8 @@ model Puzzle {
   targetPositionY Float
   targetRadius    Float
   gameSessions    GameSession[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 enum Role {
