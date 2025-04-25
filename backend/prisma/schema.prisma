@@ -32,10 +32,10 @@ model User {
 
 model GameSession {
   id              Int      @id @default(autoincrement())
-  inviteCode      Int
+  inviteCode      Int?     @unique
   status          Status   @default(prepare)
-  player1Id       String   @unique @db.Uuid
-  player1         User     @relation(name: "player1_games", fields: [player1Id], references: [id], onDelete: Cascade)
+  player1Id       String?  @unique @db.Uuid
+  player1         User?    @relation(name: "player1_games", fields: [player1Id], references: [id], onDelete: Cascade)
   player2Id       String?  @unique @db.Uuid
   player2         User?    @relation(name: "player2_games", fields: [player2Id], references: [id], onDelete: Cascade)
   currentRound    Int      @default(1)
