@@ -56,6 +56,9 @@ export class UserService {
   }
 
   update(id: string, updateUserDto: UpdateUserDto) {
+    if ('password' in updateUserDto) {
+      delete updateUserDto.password;
+    }
     return this.prisma.user.update({
       where: { id },
       data: updateUserDto,
