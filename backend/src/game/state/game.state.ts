@@ -15,6 +15,8 @@ export type Guess = {
   size: number;
 };
 
+const GUESS_SIZES = [100, 80, 60, 40, 20];
+
 // emit event: correctGuess
 // emit event: gameState
 // emit event: gameOver
@@ -22,6 +24,9 @@ export class GameRoom {
   public players$ = new BehaviorSubject<User[] | null>(null);
   private currentPlayerIndex$ = new BehaviorSubject<number>(0);
   private puzzles: Puzzle[];
+  private round$ = new BehaviorSubject<number>(1);
+  private readonly maxRounds = 5;
+  private guessSize$ = new BehaviorSubject<number>(GUESS_SIZES[0]);
   private currentPuzzle$ = new BehaviorSubject<Puzzle | null>(null);
   private guess$ = new BehaviorSubject<Guess | null>(null);
   private wrongGuess$ = new BehaviorSubject<Guess | null>(null);
@@ -139,22 +144,37 @@ export class GameRoom {
   private emitGameState() {
     combineLatest([
       this.players$.pipe(
-        map((p) => p?.map(({ name, score }) => ({ name, score }))),
+        map((p) => p?.map(({ id, name, score }) => ({ id, name, score }))),
       ),
       this.currentPlayerIndex$,
       this.currentPuzzle$.pipe(
         map((p) => (p ? { taskText: p.taskText, url: p.imageUrl } : null)),
       ),
       this.guess$,
+      this.wrongGuess$,
       this.turnTime$,
+      this.round$,
+      this.guessSize$,
     ]).subscribe(
-      ([players, currentPlayerIndex, currentPuzzle, guess, turnTime]) => {
+      ([
+        players,
+        currentPlayerIndex,
+        currentPuzzle,
+        guess,
+        wrongGuess,
+        turnTime,
+        round,
+        guessSize,
+      ]) => {
         this.server.to(String(this.id)).emit('gameState', {
           players,
           currentPlayer: players?.[currentPlayerIndex],
           currentPuzzle,
           guess,
+          wrongGuess,
           turnTime,
+          round,
+          guessSize,
         });
       },
     );
@@ -191,9 +211,15 @@ export class GameRoom {
   }
 
   private emitCheckedGuess(isCorrect: boolean) {
-    this.server.to(String(this.id)).emit('correctGuess', {
+    const isStealTurn = this.isStealTurn();
+    const solution = {
+      x: this.currentPuzzle$.value?.targetPositionX,
+      y: this.currentPuzzle$.value?.targetPositionY,
+      size: this.currentPuzzle$.value?.targetRadius,
+    };
+    this.server.to(String(this.id)).emit('checkedGuess', {
       isCorrect,
-      guess: isCorrect ? this.guess$.value : null,
+      solution: isStealTurn || isCorrect ? solution : null,
       wrongGuess: isCorrect ? null : this.guess$.value,
     });
   }
@@ -215,10 +241,12 @@ export class GameRoom {
     this.guess$.next(null);
     this.wrongGuess$.next(null);
     this.switchCurrentPlayer();
-    if (this.puzzles.length === 0) {
+    if (this.round$.value >= this.maxRounds) {
       this.endGame();
       return;
     }
+    this.round$.next(this.round$.value + 1);
+    this.guessSize$.next(GUESS_SIZES[this.round$.value - 1]);
   }
 
   private endGame() {

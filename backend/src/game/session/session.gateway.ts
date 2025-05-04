@@ -10,6 +10,7 @@ import {
 import { Socket, Server } from 'socket.io';
 import { SessionService } from './session.service';
 import { GameService } from '../game.service';
+import { Guess } from '../state/game.state';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class SessionGateway {
@@ -23,14 +24,14 @@ export class SessionGateway {
   @WebSocketServer()
   private readonly server: Server;
 
-  @SubscribeMessage('adminjoin')
+  @SubscribeMessage('admin')
   async handleAdminJoin(
-    @MessageBody() data,
+    @MessageBody() data: { roomId: string; action?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const roomId = data.roomId;
     const action = data.action;
-    const room = this.gameService.getRoom(String(roomId));
+    const { room } = this.gameService.getRoom(String(roomId));
     if (!room) throw new WsException('Invalid room ID');
     await client.join(roomId);
 
@@ -51,19 +52,34 @@ export class SessionGateway {
     );
   }
 
+  @SubscribeMessage('admin-room-status')
+  handleAdminRoomStatus(
+    @MessageBody() roomId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { room, connectedPlayers } = this.gameService.getRoom(String(roomId));
+    if (!room) throw new WsException('Invalid room ID');
+
+    const players = room.getPlayers();
+    client.emit('admin-room-status', {
+      connectedPlayers: Array.from(connectedPlayers.values()),
+      inviteCodes: players.map((player, idx) => ({
+        playerId: player.id,
+        playerName: player.name,
+        inviteCode: room.id + String(idx),
+      })),
+    });
+  }
+
   @SubscribeMessage('join')
   async handleJoin(
     @MessageBody() inviteCode: string,
     @ConnectedSocket() client: Socket,
   ) {
-    this.logger.debug('inviteCode', inviteCode);
-    const roomId = inviteCode.slice(0, -1);
-    const room = this.gameService.getRoom(roomId);
-    if (!room) throw new WsException('Invalid invite code');
-    const players = room.getPlayers();
-    const playerIdx = inviteCode.slice(-1);
-    const player = players[Number(playerIdx)];
-    if (!player) throw new WsException('Invalid invite code');
+    const { player, roomId } = this.gameService.joinPlayer(
+      client.id,
+      inviteCode,
+    );
     await client.join(roomId);
     client.emit('joined', {
       id: player.id,
@@ -71,32 +87,27 @@ export class SessionGateway {
       roomId: roomId,
     });
     this.logger.log(
-      `WSClient ${client.id} / ${player.id} joined room ${roomId}`,
+      `WSClient/playerId ${client.id} / ${player.id} joined room ${roomId}`,
     );
   }
 
-  @SubscribeMessage('message')
-  handleMessage(@MessageBody() data) {
-    const roomId = data.roomId;
-    const message = data.message;
-    this.server.to(roomId).emit(data.event, message);
-    return { message: 'Hello from the server!' };
-  }
+  // @SubscribeMessage('message')
+  // handleMessage(@MessageBody() data) {
+  //   const roomId = data.roomId;
+  //   const message = data.message;
+  //   this.server.to(roomId).emit(data.event, message);
+  //   return { message: 'Hello from the server!' };
+  // }
 
   @SubscribeMessage('guessing')
-  handleguessing(@MessageBody() data, @ConnectedSocket() client: Socket) {
+  handleguessing(
+    @MessageBody() data: { id: string; guess: Guess },
+    @ConnectedSocket() client: Socket,
+  ) {
     const playerId = data.id;
     const rooms = Array.from(client.rooms).filter((room) => room !== client.id);
     const roomId = rooms[0];
     this.gameService.guessing(roomId, data.guess, playerId);
     return { message: 'successful guessing' };
   }
-
-  // @SubscribeMessage('inc')
-  // async inc(@MessageBody() data: number, @ConnectedSocket() client: Socket) {
-  //   this.logger.log(
-  //     `Incrementing counter: ${this.sessionService.incrementCounter()}`,
-  //   );
-  //   return data;
-  // }
 }
