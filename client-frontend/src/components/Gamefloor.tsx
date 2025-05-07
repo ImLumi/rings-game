@@ -1,32 +1,40 @@
 import { Observable } from '@legendapp/state';
 import { use$ } from '@legendapp/state/react';
 import { Circle, Image, Layer, Stage } from 'react-konva';
-import { Guess, Puzzle } from '../states/game.state';
+import { Guess, Puzzle, Solution } from '../states/game.state';
 import useImage from 'use-image';
 
 interface GamefloorProps {
-  guess$?: Observable<Guess>;
-  puzzle$: Observable<Puzzle>;
-  solution$: Observable<Guess> | null;
-  ringSize$?: Observable<number>;
+  guess$?: Observable<Guess | null>;
+  puzzle$: Observable<Puzzle | null>;
+  solution$?: Observable<Solution | null>;
+  ringSize?: number;
   admin?: boolean;
   className?: string;
+  wrongGuess$?: Observable<Guess | null>;
 }
 
 export default function Gamefloor({
   guess$,
   puzzle$,
   solution$,
-  ringSize$,
+  ringSize,
   admin,
   className,
+  wrongGuess$,
 }: GamefloorProps) {
   const guess = use$(guess$);
   const puzzle = use$(puzzle$);
   const solution = use$(solution$);
-  const ringSize = use$(ringSize$);
+  const wrongGuess = use$(wrongGuess$);
   const [puzzleImg] = useImage(puzzle?.url || '');
-  if (!puzzle) return <>load...</>;
+  if (!guess$?.get())
+    guess$?.set({
+      x: 0,
+      y: 0,
+    });
+  if (!puzzle)
+    return <Stage width={500} height={500} className={className}></Stage>;
   return (
     <Stage width={500} height={500} className={className}>
       <Layer>
@@ -38,6 +46,14 @@ export default function Gamefloor({
           image={puzzleImg}
           cornerRadius={10000000000}
         />
+        {wrongGuess && (
+          <Circle
+            x={wrongGuess?.x}
+            y={wrongGuess?.y}
+            radius={ringSize}
+            fill="black"
+          />
+        )}
         <Circle
           x={solution?.x}
           y={solution?.y}
@@ -52,12 +68,11 @@ export default function Gamefloor({
             y={guess?.y}
             onDragEnd={(e) => {
               guess$.set({
-                size: ringSize || 100,
                 x: e.target.x(),
                 y: e.target.y(),
               });
             }}
-            radius={guess?.size}
+            radius={ringSize}
             stroke="#FFD700"
             strokeWidth={10}
             draggable

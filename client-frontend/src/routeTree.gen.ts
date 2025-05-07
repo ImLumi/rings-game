@@ -13,6 +13,7 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
+import { Route as GameInviteCodeImport } from './routes/game_.$inviteCode'
 import { Route as AdminPuzzleImport } from './routes/admin/puzzle'
 import { Route as AdminGameImport } from './routes/admin/game'
 import { Route as AdminPuzzleAddImport } from './routes/admin/puzzle_.add'
@@ -29,6 +30,12 @@ const AdminRoute = AdminImport.update({
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const GameInviteCodeRoute = GameInviteCodeImport.update({
+  id: '/game_/$inviteCode',
+  path: '/game/$inviteCode',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -88,6 +95,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPuzzleImport
       parentRoute: typeof AdminImport
     }
+    '/game_/$inviteCode': {
+      id: '/game_/$inviteCode'
+      path: '/game/$inviteCode'
+      fullPath: '/game/$inviteCode'
+      preLoaderRoute: typeof GameInviteCodeImport
+      parentRoute: typeof rootRoute
+    }
     '/admin/game_/$roomId': {
       id: '/admin/game_/$roomId'
       path: '/game/$roomId'
@@ -128,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/admin/game': typeof AdminGameRoute
   '/admin/puzzle': typeof AdminPuzzleRoute
+  '/game/$inviteCode': typeof GameInviteCodeRoute
   '/admin/game/$roomId': typeof AdminGameRoomIdRoute
   '/admin/puzzle/add': typeof AdminPuzzleAddRoute
 }
@@ -137,6 +152,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/admin/game': typeof AdminGameRoute
   '/admin/puzzle': typeof AdminPuzzleRoute
+  '/game/$inviteCode': typeof GameInviteCodeRoute
   '/admin/game/$roomId': typeof AdminGameRoomIdRoute
   '/admin/puzzle/add': typeof AdminPuzzleAddRoute
 }
@@ -147,6 +163,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/admin/game': typeof AdminGameRoute
   '/admin/puzzle': typeof AdminPuzzleRoute
+  '/game_/$inviteCode': typeof GameInviteCodeRoute
   '/admin/game_/$roomId': typeof AdminGameRoomIdRoute
   '/admin/puzzle_/add': typeof AdminPuzzleAddRoute
 }
@@ -158,6 +175,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/game'
     | '/admin/puzzle'
+    | '/game/$inviteCode'
     | '/admin/game/$roomId'
     | '/admin/puzzle/add'
   fileRoutesByTo: FileRoutesByTo
@@ -166,6 +184,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/game'
     | '/admin/puzzle'
+    | '/game/$inviteCode'
     | '/admin/game/$roomId'
     | '/admin/puzzle/add'
   id:
@@ -174,6 +193,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/game'
     | '/admin/puzzle'
+    | '/game_/$inviteCode'
     | '/admin/game_/$roomId'
     | '/admin/puzzle_/add'
   fileRoutesById: FileRoutesById
@@ -182,11 +202,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  GameInviteCodeRoute: typeof GameInviteCodeRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  GameInviteCodeRoute: GameInviteCodeRoute,
 }
 
 export const routeTree = rootRoute
@@ -200,7 +222,8 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/admin"
+        "/admin",
+        "/game_/$inviteCode"
       ]
     },
     "/": {
@@ -222,6 +245,9 @@ export const routeTree = rootRoute
     "/admin/puzzle": {
       "filePath": "admin/puzzle.tsx",
       "parent": "/admin"
+    },
+    "/game_/$inviteCode": {
+      "filePath": "game_.$inviteCode.tsx"
     },
     "/admin/game_/$roomId": {
       "filePath": "admin/game_.$roomId.tsx",

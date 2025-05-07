@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GameRoom, Guess } from './state/game.state';
+import { GameRoom, GuessDto } from './state/game.state';
 import { PrismaService } from 'src/prisma.service';
 import { Server } from 'socket.io';
 import { CreateGameSessionDto } from './session/dto/create-game-session.dto';
@@ -98,7 +98,7 @@ export class GameService {
     return { player, roomId };
   }
 
-  guessing(roomId: string, guess: Guess, playerId: string) {
+  guessing(roomId: string, guess: GuessDto, playerId: string) {
     const roomObj = this.rooms.get(roomId);
     if (!roomObj) throw new Error('Room not found');
     const { room } = roomObj;

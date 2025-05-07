@@ -1,15 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { $React } from '@legendapp/state/react-web';
 import { use$ } from '@legendapp/state/react';
 import { useObservable } from '@legendapp/state/react';
 import { socket } from '../socket';
 import { store$ } from '../states/game.state';
+import { when } from '@legendapp/state';
 
 export const Route = createFileRoute('/')({
   component: Index,
 });
 
 function Index() {
+  const navigate = useNavigate();
   const inviteCode$ = useObservable('');
   const player = use$(store$.player);
   const isJoined = use$(store$.isJoined);
@@ -34,9 +36,11 @@ function Index() {
       <div className="max-w-400">
         <form
           className="flex flex-col items-center justify-center gap-2 p-3"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             socket.emit('join', inviteCode$.get());
+            await when(store$.isJoined);
+            navigate({ to: `/game/${inviteCode$.get()}` });
           }}
         >
           <$React.input

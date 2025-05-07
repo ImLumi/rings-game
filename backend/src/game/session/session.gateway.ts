@@ -10,7 +10,7 @@ import {
 import { Socket, Server } from 'socket.io';
 import { SessionService } from './session.service';
 import { GameService } from '../game.service';
-import { Guess } from '../state/game.state';
+import { Guess, GuessDto } from '../state/game.state';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class SessionGateway {
@@ -101,13 +101,16 @@ export class SessionGateway {
 
   @SubscribeMessage('guessing')
   handleguessing(
-    @MessageBody() data: { id: string; guess: Guess },
+    @MessageBody() data: { id: string; guess: GuessDto },
     @ConnectedSocket() client: Socket,
   ) {
     const playerId = data.id;
     const rooms = Array.from(client.rooms).filter((room) => room !== client.id);
     const roomId = rooms[0];
     this.gameService.guessing(roomId, data.guess, playerId);
+    this.logger.debug(
+      `WSClient/playerId ${client.id} / ${playerId} guessed ${data.guess.x} ${data.guess.y}`,
+    );
     return { message: 'successful guessing' };
   }
 }

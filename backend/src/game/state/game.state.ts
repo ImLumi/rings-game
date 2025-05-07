@@ -15,7 +15,12 @@ export type Guess = {
   size: number;
 };
 
-const GUESS_SIZES = [100, 80, 60, 40, 20];
+export type GuessDto = {
+  x: number;
+  y: number;
+};
+
+const RING_SIZES = [100, 80, 60, 40, 20];
 
 // emit event: correctGuess
 // emit event: gameState
@@ -26,7 +31,7 @@ export class GameRoom {
   private puzzles: Puzzle[];
   private round$ = new BehaviorSubject<number>(1);
   private readonly maxRounds = 5;
-  private guessSize$ = new BehaviorSubject<number>(GUESS_SIZES[0]);
+  private ringSize$ = new BehaviorSubject<number>(RING_SIZES[0]);
   private currentPuzzle$ = new BehaviorSubject<Puzzle | null>(null);
   private guess$ = new BehaviorSubject<Guess | null>(null);
   private wrongGuess$ = new BehaviorSubject<Guess | null>(null);
@@ -72,19 +77,23 @@ export class GameRoom {
   }
 
   start(server: Server) {
-    this.server = server;
     if (!this.isReady()) {
       throw new Error('Not enough players to start the game');
     }
     if (this.players$.value === null) throw new Error('No players in the room');
     this.players$.next(this.players$.value.map((p) => ({ ...p, score: 0 })));
-    this.startTurn();
+    if (!this.server) {
+      this.server = server;
+      this.emitGameState();
+    }
     this.emitGameState();
+    this.startTurn();
   }
 
   startTurn() {
     this.nextPuzzle();
     this.startTimer();
+    this.ringSize$.next(RING_SIZES[this.round$.value - 1]);
   }
 
   checkGuess() {
@@ -95,18 +104,16 @@ export class GameRoom {
       this.guess$.value,
       this.currentPuzzle$.value,
     );
-    this.emitCheckedGuess(isCorrect);
+    if (!isCorrect && !this.wrongGuess$.value) {
+      this.emitCheckedGuess(isCorrect);
+      this.wrongGuess$.next(this.guess$.value);
+      this.guess$.next(null);
+      return;
+    }
     if (isCorrect) this.addScore();
-    else if (this.wrongGuess$.value) this.endTurn();
 
-    // if (!this.isCorrect(this.guess$.value, this.currentPuzzle$.value)) {
-    //   if (this.guess$.value) this.endTurn();
-    //   this.emitCheckedGuess(false);
-    //   return;
-    // }
-    // this.scoring();
-    // this.emitCheckedGuess(true);
-    // this.endTurn();
+    this.emitCheckedGuess(isCorrect);
+    this.endTurn();
   }
 
   stealTurn() {
@@ -115,9 +122,12 @@ export class GameRoom {
     this.startTimer({ isStealTurn: true });
   }
 
-  guessing(guess: Guess) {
+  guessing(guess: GuessDto) {
     if (this.turnTime$.value <= 0) throw new Error('Time is up');
-    this.guess$.next(guess);
+    this.guess$.next({
+      ...guess,
+      size: this.ringSize$.value,
+    });
   }
 
   private isReady() {
@@ -154,7 +164,7 @@ export class GameRoom {
       this.wrongGuess$,
       this.turnTime$,
       this.round$,
-      this.guessSize$,
+      this.ringSize$,
     ]).subscribe(
       ([
         players,
@@ -164,9 +174,10 @@ export class GameRoom {
         wrongGuess,
         turnTime,
         round,
-        guessSize,
+        ringSize,
       ]) => {
         this.server.to(String(this.id)).emit('gameState', {
+          roomId: this.id,
           players,
           currentPlayer: players?.[currentPlayerIndex],
           currentPuzzle,
@@ -174,7 +185,7 @@ export class GameRoom {
           wrongGuess,
           turnTime,
           round,
-          guessSize,
+          ringSize,
         });
       },
     );
@@ -246,7 +257,7 @@ export class GameRoom {
       return;
     }
     this.round$.next(this.round$.value + 1);
-    this.guessSize$.next(GUESS_SIZES[this.round$.value - 1]);
+    this.ringSize$.next(RING_SIZES[this.round$.value - 1]);
   }
 
   private endGame() {

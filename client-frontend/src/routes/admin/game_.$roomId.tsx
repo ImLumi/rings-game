@@ -1,8 +1,11 @@
-import { createFileRoute, useLoaderData } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { socket } from '../../socket';
 import { adminstore$ } from '../../states/admin.state';
 import { use$ } from '@legendapp/state/react';
 import ClipboardBox from './-components/ClipboardBox';
+import { store$ } from '../../states/game.state';
+import { useEffect } from 'react';
+import Gamefloor from '../../components/Gamefloor';
 
 const GAME_ACTIONS = {
   START: 'start',
@@ -13,20 +16,19 @@ const GAME_ACTIONS = {
 
 export const Route = createFileRoute('/admin/game_/$roomId')({
   component: RouteComponent,
-  loader: async ({ params }) => {
-    const { roomId } = params;
-    if (!roomId) {
-      throw new Error('Room ID is required');
-    }
-    socket.emit('admin', { roomId });
-    socket.emit('admin-room-status', roomId);
-    return { roomId };
-  },
 });
 
 function RouteComponent() {
-  const { roomId } = useLoaderData({ from: '/admin/game_/$roomId' });
+  const { roomId } = Route.useParams();
   const roomState = use$(adminstore$.roomState);
+  const gameState = use$(store$.gameState);
+
+  useEffect(() => {
+    socket.emit('admin', { roomId });
+    socket.emit('admin-room-status', roomId, () => {
+      console.log('admin-room-status callback');
+    });
+  }, []);
 
   return (
     <div>
@@ -51,6 +53,25 @@ function RouteComponent() {
             {action.charAt(0).toUpperCase() + action.slice(1)}
           </button>
         ))}
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold">Game State</h2>
+        <div className="flex flex-wrap items-center gap-10 p-5">
+          <p>current player: {gameState.currentPlayer?.name}</p>
+          <p>
+            turn time: <span>{gameState.turnTime}</span>
+          </p>
+          <p>round: {gameState.round}</p>
+          <p>has wrong guess: {gameState.isWrongGuess}</p>
+          {gameState.currentPuzzle && (
+            <Gamefloor
+              puzzle$={store$.gameState.currentPuzzle}
+              wrongGuess$={store$.gameState.wrongGuess}
+              solution$={store$.gameState.solution}
+              ringSize={gameState.ringSize || 100}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
