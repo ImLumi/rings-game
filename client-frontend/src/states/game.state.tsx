@@ -69,10 +69,14 @@ export const store$ = observable<Store>({
     ringSize: null,
     isYourTurn: (): boolean =>
       store$.gameState.currentPlayer?.id.get() === store$.player.id.get(),
-    isStealTurn: (): boolean =>
-      !store$.gameState.isYourTurn.get() && store$.gameState.isWrongGuess.get(),
-    isGuessing: (): boolean =>
-      store$.gameState.isYourTurn.get() || store$.gameState.isStealTurn.get(),
+    isStealTurn: (): boolean => store$.gameState.isWrongGuess.get(),
+    isGuessing: (): boolean => {
+      if (store$.gameState.isGameOver.get()) return false;
+      if (store$.gameState.turnTime.get() <= 0) return false;
+      return (
+        store$.gameState.isYourTurn.get() !== store$.gameState.isStealTurn.get()
+      );
+    },
   },
   player: {
     id: null,
@@ -93,11 +97,25 @@ socket.on('joined', (player: LocalPlayer) =>
   mergeIntoObservable(store$.player, player),
 );
 socket.on('gameState', (gameState: GameState) => {
-  store$.gameState.solution.set(null);
   mergeIntoObservable(store$.gameState, gameState);
 });
 socket.on('checkedGuess', (correctGuess: CorrectGuessDto) => {
   mergeIntoObservable(store$.gameState, correctGuess);
+});
+
+observe(() => {
+  const turnTime = store$.gameState.turnTime.get();
+  if (!!turnTime && turnTime > 0) {
+    console.log('turnTime', turnTime);
+    store$.gameState.solution.set(null);
+  }
+});
+
+observe(() => {
+  const thisPlayer = store$.gameState.players?.find(
+    (p) => p.id.get() === store$.player.id.get(),
+  );
+  if (thisPlayer) store$.player.score.set(thisPlayer.score.get());
 });
 
 observe(() => {
@@ -106,4 +124,8 @@ observe(() => {
       guess: store$.player.guess.get(),
       id: store$.player.id.get(),
     });
+});
+
+observe(() => {
+  console.log('solution', store$.gameState.solution.get());
 });

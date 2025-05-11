@@ -10,7 +10,7 @@ import {
 import { Socket, Server } from 'socket.io';
 import { SessionService } from './session.service';
 import { GameService } from '../game.service';
-import { Guess, GuessDto } from '../state/game.state';
+import { GuessDto } from '../state/game.state';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class SessionGateway {
@@ -50,6 +50,22 @@ export class SessionGateway {
     this.logger.log(
       `WSClient ${client.id} joined room ${roomId} with action ${action}`,
     );
+  }
+
+  @SubscribeMessage('admin-puzzle')
+  handleAdminPuzzle(
+    @MessageBody() data: { roomId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const roomId = data.roomId;
+    const { room } = this.gameService.getRoom(String(roomId));
+    if (!room) throw new WsException('Invalid room ID');
+    const puzzle$ = room.getCurrentPuzzle$();
+    puzzle$.subscribe((puzzle) => {
+      client.emit('admin-puzzle', {
+        puzzle: puzzle,
+      });
+    });
   }
 
   @SubscribeMessage('admin-room-status')

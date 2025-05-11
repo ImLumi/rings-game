@@ -61,7 +61,7 @@ export class GameService {
     const roomObj = this.rooms.get(roomId);
     if (!roomObj) throw new Error('Room not found');
     const { room } = roomObj;
-    room.startTurn();
+    room.nextTurn();
   }
 
   checkGuess(roomId: string) {

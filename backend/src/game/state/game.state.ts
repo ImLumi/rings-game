@@ -2,6 +2,7 @@ import { User, Puzzle } from 'generated/prisma';
 import {
   BehaviorSubject,
   combineLatest,
+  debounceTime,
   map,
   Subscription,
   take,
@@ -86,17 +87,23 @@ export class GameRoom {
       this.server = server;
       this.emitGameState();
     }
-    this.emitGameState();
     this.startTurn();
   }
 
-  startTurn() {
+  private startTurn() {
     this.nextPuzzle();
     this.startTimer();
     this.ringSize$.next(RING_SIZES[this.round$.value - 1]);
   }
 
+  nextTurn() {
+    this.endTurn();
+    this.clearGuesses();
+    this.startTurn();
+  }
+
   checkGuess() {
+    this.clearTimer();
     if (this.currentPuzzle$.value === null) return;
     if (this.guess$.value === null) return;
 
@@ -113,7 +120,7 @@ export class GameRoom {
     if (isCorrect) this.addScore();
 
     this.emitCheckedGuess(isCorrect);
-    this.endTurn();
+    // this.endTurn();
   }
 
   stealTurn() {
@@ -149,6 +156,7 @@ export class GameRoom {
 
   private clearTimer() {
     if (this.turnTimerSubscription) this.turnTimerSubscription.unsubscribe();
+    this.turnTime$.next(0);
   }
 
   private emitGameState() {
@@ -165,30 +173,36 @@ export class GameRoom {
       this.turnTime$,
       this.round$,
       this.ringSize$,
-    ]).subscribe(
-      ([
-        players,
-        currentPlayerIndex,
-        currentPuzzle,
-        guess,
-        wrongGuess,
-        turnTime,
-        round,
-        ringSize,
-      ]) => {
-        this.server.to(String(this.id)).emit('gameState', {
-          roomId: this.id,
+    ])
+      .pipe(debounceTime(0))
+      .subscribe(
+        ([
           players,
-          currentPlayer: players?.[currentPlayerIndex],
+          currentPlayerIndex,
           currentPuzzle,
           guess,
           wrongGuess,
           turnTime,
           round,
           ringSize,
-        });
-      },
-    );
+        ]) => {
+          this.server.to(String(this.id)).emit('gameState', {
+            roomId: this.id,
+            players,
+            currentPlayer: players?.[currentPlayerIndex],
+            currentPuzzle,
+            guess,
+            wrongGuess,
+            turnTime,
+            round,
+            ringSize,
+          });
+        },
+      );
+  }
+
+  public getCurrentPuzzle$() {
+    return this.currentPuzzle$;
   }
 
   private nextPuzzle(puzzleId?: number) {
@@ -232,6 +246,7 @@ export class GameRoom {
       isCorrect,
       solution: isStealTurn || isCorrect ? solution : null,
       wrongGuess: isCorrect ? null : this.guess$.value,
+      ...(isStealTurn && { wrongGuess: this.wrongGuess$.value }),
     });
   }
 
@@ -247,10 +262,14 @@ export class GameRoom {
     );
   }
 
-  private endTurn() {
+  private clearGuesses() {
     this.clearTimer();
     this.guess$.next(null);
     this.wrongGuess$.next(null);
+  }
+
+  private endTurn() {
+    this.clearGuesses();
     this.switchCurrentPlayer();
     if (this.round$.value >= this.maxRounds) {
       this.endGame();

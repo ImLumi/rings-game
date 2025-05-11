@@ -3,6 +3,7 @@ import { use$ } from '@legendapp/state/react';
 import { Circle, Image, Layer, Stage } from 'react-konva';
 import { Guess, Puzzle, Solution } from '../states/game.state';
 import useImage from 'use-image';
+import { useEffect } from 'react';
 
 interface GamefloorProps {
   guess$?: Observable<Guess | null>;
@@ -12,6 +13,7 @@ interface GamefloorProps {
   admin?: boolean;
   className?: string;
   wrongGuess$?: Observable<Guess | null>;
+  isMovableRing?: boolean;
 }
 
 export default function Gamefloor({
@@ -22,17 +24,20 @@ export default function Gamefloor({
   admin,
   className,
   wrongGuess$,
+  isMovableRing = true,
 }: GamefloorProps) {
   const guess = use$(guess$);
   const puzzle = use$(puzzle$);
   const solution = use$(solution$);
   const wrongGuess = use$(wrongGuess$);
   const [puzzleImg] = useImage(puzzle?.url || '');
-  if (!guess$?.get())
-    guess$?.set({
-      x: 0,
-      y: 0,
-    });
+  useEffect(() => {
+    if (!guess$?.get())
+      guess$?.set({
+        x: 0,
+        y: 0,
+      });
+  }, [guess$]);
   if (!puzzle)
     return <Stage width={500} height={500} className={className}></Stage>;
   return (
@@ -75,7 +80,7 @@ export default function Gamefloor({
             radius={ringSize}
             stroke="#FFD700"
             strokeWidth={10}
-            draggable
+            draggable={isMovableRing}
           />
         )}
       </Layer>

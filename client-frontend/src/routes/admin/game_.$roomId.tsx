@@ -6,6 +6,7 @@ import ClipboardBox from './-components/ClipboardBox';
 import { store$ } from '../../states/game.state';
 import { useEffect } from 'react';
 import Gamefloor from '../../components/Gamefloor';
+import { mergeIntoObservable } from '@legendapp/state';
 
 const GAME_ACTIONS = {
   START: 'start',
@@ -27,6 +28,9 @@ function RouteComponent() {
     socket.emit('admin', { roomId });
     socket.emit('admin-room-status', roomId, () => {
       console.log('admin-room-status callback');
+    });
+    socket.on('admin-puzzle', (data) => {
+      mergeIntoObservable(store$.gameState.solution, data.puzzle);
     });
   }, []);
 
@@ -67,6 +71,7 @@ function RouteComponent() {
             <Gamefloor
               puzzle$={store$.gameState.currentPuzzle}
               wrongGuess$={store$.gameState.wrongGuess}
+              guess$={store$.gameState.guess}
               solution$={store$.gameState.solution}
               ringSize={gameState.ringSize || 100}
             />
